@@ -10,9 +10,10 @@ import numpy as np
 from sagar.crystal.derive import ConfigurationGenerator
 from sagar.io.vasp import read_vasp,_read_string
 from sagar.crystal.structure import symbol2number as s2n
+from sagar.element.base import get_symbol
 from sagar.molecule.derive import ConfigurationGenerator as mole_CG
 from sagar.molecule.structure import Molecule
-from pyvaspflow.utils import generate_all_basis, refine_points,write_poscar
+from pyvaspflow.utils import generate_all_basis, refine_points,write_poscar,get_identity_atoms
 from itertools import combinations,chain
 from sagar.crystal.structure import Cell
 from shutil import rmtree
@@ -78,8 +79,8 @@ class DefectMaker:
                     tmp = d[comb_list][:,comb_list]
                     tmp = np.triu(tmp)
                     tmp = sorted(tmp[tmp>0])
-                    if (np.std(tmp[0:4]) < 0.2 or np.std(tmp[1:5]) < 0.2 or
-                    np.std(tmp[2:]) < 0.2) and np.std(tmp) < 0.5:
+                    if (np.std(tmp[0:4]) < 0.1 or np.std(tmp[1:5]) < 0.1 or
+                    np.std(tmp[2:]) < 0.1) and np.std(tmp) < 0.5:
                         third_tetra.append(comb_list)
         all_tetra = []
         if len(first_tetra) != 0:
@@ -135,7 +136,7 @@ class DefectMaker:
                 idx += 1
 
 
-    def get_point_defect(self,symprec=1e-3,doped_out='all',doped_in=['Vac'],num=[1],ip=""):
+    def get_point_defect(self,symprec=1e-3,doped_out='all',doped_in=['Vac'],num=[1]):
         cell = self.no_defect_cell
         cg = ConfigurationGenerator(cell, symprec)
         sites = _get_sites(list(cell.atoms), doped_out=doped_out, doped_in=doped_in)
@@ -186,6 +187,51 @@ class DefectMaker:
             deg.append(_deg)
             idx += 1
         np.savetxt(os.path.join(folder,"deg.txt"),deg,fmt='%d')
+
+    def get_magnetic_config(self,magnetic_atom,magmon=1,magmon_identity=False,symprec=1e-3):
+        cell = self.no_defect_cell
+        cg = ConfigurationGenerator(cell, symprec)
+        doped_in = get_symbol(np.setdiff1d(range(1,56),np.unique(cell.atoms))[0])
+        sites = _get_sites(list(cell.atoms), doped_out=magnetic_atom, doped_in=[doped_in])
+        n = len(cell.atoms)
+        magmom = []
+        magnetic_atom_idx = np.where(cell.atoms==s2n(magnetic_atom[0]))[0].astype("int")
+        atoms_type = get_identity_atoms(cell,symprec)
+        unique_atoms_type = np.unique(atoms_type)
+        for num in range(len(magnetic_atom_idx)//2+1):
+            confs = cg.cons_specific_cell(sites, e_num=[len(magnetic_atom_idx)-num,num], symprec=symprec)
+            for c,_def in confs:
+                tmp_magmom = np.zeros((n,))
+                tmp_magmom[magnetic_atom_idx] = magmon
+                mag_idx = [np.where(np.linalg.norm(cell.positions-c.positions[_idx],axis=1)<0.01)[0][0] \
+                for _idx in np.where(c.atoms==s2n(doped_in[0]))[0]]
+                tmp_magmom[mag_idx] = -magmon
+                if magmon_identity:
+                    flag = True
+                    for i in unique_atoms_type:
+                        if len(np.unique(tmp_magmom[np.where(atoms_type==i)[0]])) != 1:
+                            flag = False
+                            break
+                    if flag:
+                        magmom.append(tmp_magmom.tolist())
+                else:
+                    magmom.append(tmp_magmom.tolist())
+        # remove the equivalent AFM -1 1/1 -1
+        final_magmom = set()
+        final_magmom.add(tuple(magmom[0]))
+        for idx in range(1,len(magmom)):
+            mag = np.array(magmom[idx]).astype("int")
+            if tuple(mag) in final_magmom:
+                continue
+            idx_up = np.where(mag==magmon)[0].astype("int")
+            idx_down = np.where(mag==-magmon)[0].astype("int")
+            mag[idx_up] = -magmon
+            mag[idx_down] = magmon
+            if tuple(mag) in final_magmom:
+                continue
+            final_magmom.add(tuple(mag))
+        final_magmom = np.array([list(i) for i in final_magmom])
+        np.savetxt("INCAR-magmon",final_magmom,fmt='%2d')
 
 # def _get_sites(atoms,doped_out,doped_in):
 #     doped_in = [s2n(i) for i in doped_in]

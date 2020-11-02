@@ -8,11 +8,12 @@ from os import path
 import numpy as np
 from enum import Enum
 from pyvaspflow.utils import is_2d_structure
+import itertools
 
 class Incar(dict):
 
     def __init__(self, params=None):
-        self.update({'ISIF':2,'ISTART':0,'ICHARG':2,'NSW':50,'IBRION':2,
+        self.update({'ISIF':3,'ISTART':0,'ICHARG':2,'NSW':50,'IBRION':2,
         'EDIFF':1E-5,'EDIFFG':-0.01,'ISMEAR':0,'NPAR':4,'LREAL':'Auto',
         'LWAVE':'F','LCHARG':'F'})
         if params:
@@ -50,7 +51,7 @@ class Incar(dict):
         for k in keys:
             if k == "MAGMOM" and isinstance(self[k], list):
                 value = []
-                if (isinstance(self[k][0], list) or isinstance(self[k][0], Magmom)) and \
+                if (isinstance(self[k][0], list) ) and \
                         (self.get("LSORBIT") or self.get("LNONCOLLINEAR")):
                     value.append(" ".join(str(i) for j in self[k] for i in j))
                 elif self.get("LSORBIT") or self.get("LNONCOLLINEAR"):
@@ -256,7 +257,7 @@ class Potcar(list):
                 from os.path import isfile, join
                 possible = [dir for dir in  listdir(json_f['potcar_path'][self.functional]) if map.split('_')[0] in dir]
                 raise FileNotFoundError('Not found supported POTCAR file'
-                      +' you can change your map to:'+ ' '.join(possible))
+                      +' you can set sym_potcar_map='+ ','.join(possible))
         with open(filename, 'w') as outfile:
             for fname in all_pot_file:
                 outfile.write(zread(fname))

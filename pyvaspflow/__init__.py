@@ -17,8 +17,9 @@ if not path.isfile(path.join(home,'.config','pyvaspflow','conf.json')):
                   "USPP_LDA":"/opt/ohpc/pub/apps/vasp/pps/USPP_LDA",
                   "USPP_PW91":"/opt/ohpc/pub/apps/vasp/pps/USPP_PW91"},
              "job":
-                 {"prepend": "module load vasp/5.4.4-impi-mkl",
-                  "exec": "mpirun -n ${SLURM_NPROCS} vasp_std"}}
+                 {"prepend": "module load vasp/5.4.4-impi-mkl;\necho 'This program is running at'  `hostname`",
+                  "exec": "mpirun -n ${SLURM_NPROCS} vasp_std",
+                  "append":"exit"}}
 
     with open(path.join(home,'.config','pyvaspflow','conf.json'),'w') as outfile:
         json.dump(json_f,outfile,ensure_ascii=False)

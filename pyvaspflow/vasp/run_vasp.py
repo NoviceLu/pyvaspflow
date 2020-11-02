@@ -93,6 +93,7 @@ def get_number_of_running_shell_files(shell_file,main_pid):
     que_res = p.stdout.readlines()
     p.stdout.close()
     pid_res = [i  for i in que_res if 'bash '+shell_file in i.decode("utf-8") and str(main_pid) in i.decode("utf-8") ]
+    p.kill()
     return len(pid_res)
 
 def write_job_file(job_name,node_name,cpu_num,node_num):
@@ -126,9 +127,7 @@ def _submit_job(job_name,cpu_num):
 def run_single_vasp(job_name,is_login_node=False,cpu_num=24,cwd="",main_pid=None):
     if not main_pid:
         main_pid = os.getpid()
-        job_id_file = os.path.join(os.path.expanduser("~"),'.config','pyvaspflow',str(main_pid))
-    else:
-        job_id_file = os.path.join(os.path.expanduser("~"),'.config','pyvaspflow',str(main_pid))
+    job_id_file = os.path.join(os.path.expanduser("~"),'.config','pyvaspflow',str(main_pid))
     logging.basicConfig(level=logging.INFO,
         format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
         datefmt='%a, %d %b %Y %H:%M:%S',
@@ -141,8 +140,8 @@ def run_single_vasp(job_name,is_login_node=False,cpu_num=24,cwd="",main_pid=None
     else:
         logging.info(job_name+" calculation has submitted at calculation node")
         job_id = submit_job(job_name)
-        pid = os.getpid()
-        job_id_file = os.path.join(os.path.expanduser("~"),'.config','pyvaspflow',str(pid))
+        # pid = os.getpid()
+        # job_id_file = os.path.join(os.path.expanduser("~"),'.config','pyvaspflow',str(pid))
         with open(job_id_file,'a') as f:
             f.writelines(job_id+"\n")
         while True:
@@ -150,16 +149,16 @@ def run_single_vasp(job_name,is_login_node=False,cpu_num=24,cwd="",main_pid=None
                 logging.info(job_name+" in dir of "+os.getcwd()+" calculation finished")
                 break
             sleep(5)
-    if not has_job_finished(os.path.join(os.getcwd(),job_name)):
-        logging.info(job_name+" in dir of "+cwd+" calculation does not finish, another calculation will be submitted")
-        if os.path.getsize(os.path.join(os.getcwd(),job_name,'CONTCAR')) < 1:
-            logging.info(job_name+" in dir of "+cwd+" calculation does not finish, another calculation can not be submitted for one ion step does not finished")
-            return
-        poscar_size = os.path.getsize(os.path.join(os.getcwd(),job_name,'POSCAR'))
-        if os.path.isfile(os.path.join(os.getcwd(),job_name,'CONTCAR')) and os.path.getsize(os.path.join(os.getcwd(),job_name,'CONTCAR'))>=poscar_size:
-            shutil.copyfile(os.path.join(os.getcwd(),job_name,'CONTCAR'),os.path.join(os.getcwd(),job_name,'POSCAR'))
-        run_single_vasp(job_name,is_login_node,cpu_num,cwd,main_pid)
-        # os.remove(job_id_file)
+    # if not has_job_finished(os.path.join(os.getcwd(),job_name)):
+    #     logging.info(job_name+" in dir of "+cwd+" calculation does not finish, another calculation will be submitted")
+    #     if os.path.getsize(os.path.join(os.getcwd(),job_name,'CONTCAR')) < 1:
+    #         logging.info(job_name+" in dir of "+cwd+" calculation does not finish, another calculation can not be submitted for one ion step does not finished")
+    #         return
+    #     poscar_size = os.path.getsize(os.path.join(os.getcwd(),job_name,'POSCAR'))
+    #     if os.path.isfile(os.path.join(os.getcwd(),job_name,'CONTCAR')) and os.path.getsize(os.path.join(os.getcwd(),job_name,'CONTCAR'))>=poscar_size:
+    #         shutil.copyfile(os.path.join(os.getcwd(),job_name,'CONTCAR'),os.path.join(os.getcwd(),job_name,'POSCAR'))
+    #     run_single_vasp(job_name,is_login_node,cpu_num,cwd,main_pid)
+    #     # os.remove(job_id_file)
 
 def run_single_vasp_without_job(job_name,node_name,cpu_num,node_num=1,cwd="",main_pid=None):
     if not main_pid:
@@ -194,15 +193,15 @@ def run_single_vasp_without_job(job_name,node_name,cpu_num,node_num=1,cwd="",mai
             logging.info(job_name+" in dir of "+os.getcwd()+" calculation finished")
             break
         sleep(5)
-    if not has_job_finished(os.path.join(os.getcwd(),job_name)):
-        logging.info(job_name+" in dir of "+os.getcwd()+" calculation does not finish, another calculation will be submitted")
-        if os.path.getsize(os.path.join(os.getcwd(),job_name,'CONTCAR')) < 1:
-            logging.info(job_name+" in dir of "+os.getcwd()+" calculation does not finish, another calculation can not be submitted for one ion step does not finished")
-            return
-        poscar_size = os.path.getsize(os.path.join(os.getcwd(),job_name,'POSCAR'))
-        if os.path.isfile(os.path.join(os.getcwd(),job_name,'CONTCAR')) and os.path.getsize(os.path.join(os.getcwd(),job_name,'CONTCAR'))>=poscar_size:
-            shutil.copyfile(os.path.join(os.getcwd(),job_name,'CONTCAR'),os.path.join(os.getcwd(),job_name,'POSCAR'))
-        run_single_vasp_without_job(job_name,node_name,cpu_num,node_num,cwd,main_pid)
+    # if not has_job_finished(os.path.join(os.getcwd(),job_name)):
+    #     logging.info(job_name+" in dir of "+os.getcwd()+" calculation does not finish, another calculation will be submitted")
+    #     if os.path.getsize(os.path.join(os.getcwd(),job_name,'CONTCAR')) < 1:
+    #         logging.info(job_name+" in dir of "+os.getcwd()+" calculation does not finish, another calculation can not be submitted for one ion step does not finished")
+    #         return
+    #     poscar_size = os.path.getsize(os.path.join(os.getcwd(),job_name,'POSCAR'))
+    #     if os.path.isfile(os.path.join(os.getcwd(),job_name,'CONTCAR')) and os.path.getsize(os.path.join(os.getcwd(),job_name,'CONTCAR'))>=poscar_size:
+    #         shutil.copyfile(os.path.join(os.getcwd(),job_name,'CONTCAR'),os.path.join(os.getcwd(),job_name,'POSCAR'))
+    #     run_single_vasp_without_job(job_name,node_name,cpu_num,node_num,cwd,main_pid)
 
 def run_multi_vasp(job_name='task',end_job_num=1,start_job_num=0,job_list=None,par_job_num=4,cwd=""):
     pid = os.getpid()
@@ -299,7 +298,7 @@ def run_multi_vasp_without_job(job_name='task',end_job_num=1,node_name="short_q"
                     f.writelines(_job_id+"\n")
                 idx += 1
                 sleep(5)
-            sleep(60)
+            sleep(10)
             if idx == end_job_num+1 and job_inqueue_num(jobid_pool) == 0:
                 break
     else:
@@ -324,7 +323,7 @@ def run_multi_vasp_without_job(job_name='task',end_job_num=1,node_name="short_q"
                     f.writelines(_job_id+"\n")
                 idx += 1
                 sleep(5)
-            sleep(60)
+            sleep(10)
             if idx == end_job_num+1 and job_inqueue_num(jobid_pool) == 0:
                 break
     os.remove(job_id_file)

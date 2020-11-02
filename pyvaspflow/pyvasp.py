@@ -101,12 +101,12 @@ def ewald(wd,number):
     outcar = os.path.join(wd,'OUTCAR')
     click.echo(': '.join(get_ele_sta(outcar, number)))
 
-@cli.command('cpu',short_help="Get cpu time of current system")
-@click.option('--wd','-w',default='.',help='your work direcroty',show_default=True,
-type=click.Path(exists=True,resolve_path=True),autocompletion=get_dir_name)
-def cpu(wd):
-    EV = ExtractValue(wd)
-    click.echo(EV.get_cpu_time())
+# @cli.command('cpu',short_help="Get cpu time of current system")
+# @click.option('--wd','-w',default='.',help='your work direcroty',show_default=True,
+# type=click.Path(exists=True,resolve_path=True),autocompletion=get_dir_name)
+# def cpu(wd):
+#     EV = ExtractValue(wd)
+#     click.echo(EV.get_cpu_time())
 
 
 def get_gap(EV,vo,co):
@@ -234,7 +234,39 @@ def get_point_defect(poscar,doped_in,doped_out,num,symprec):
     """
     DM = DefectMaker(no_defect=poscar)
     doped_out,doped_in,num = doped_out.split(','),doped_in.split(','),num.split(',')
-    DM.get_point_defect(doped_in=doped_in,doped_out=doped_out,symprec=symprec,num=[int(i) for i in num])
+    try:
+        num = [int(i) for i in num]
+    except:
+        if num[0].lower() == "all":
+            num = None
+        else:
+            raise ValueError(num+" is not supported here")
+    DM.get_point_defect(doped_in=doped_in,doped_out=doped_out,symprec=symprec,num=num)
+
+
+@cli.command('get_magnetic_config',short_help="Get magnetic configurations")
+@click.argument('poscar', metavar='<primitive_cell_file>',
+                type=click.Path(exists=True, resolve_path=True, readable=True, file_okay=True),
+                autocompletion=get_poscar_files)
+@click.option('--magnetic_atom', '-ma', default='all', type=str, nargs=1,
+help='specify a magnetic atom')
+@click.option('--symprec', '-s', default='1e-3', type=float,help='system precision')
+@click.option('--magmon', '-m', default=1, type=int,help='magmon')
+@click.option('--magmon_identity', '-mi', default=False, type=bool,help='equivalent atoms with equivalent spin')
+def get_magnetic_config(poscar,magnetic_atom,magmon,magmon_identity,symprec):
+    """
+    argument:
+    poscar, the  path of your initial POSCAR
+    Optional parameter:
+    magnetic_atom, specify a magnetic atom
+    magmon, magmon
+    magmon_identity, the equivalent atoms will have equivalent spins. (True or False)
+    sympre: system precision
+    Example:
+    pyvasp get_magnetic_config POSCAR -ma Fe -m 3 -mi True
+    """
+    DM = DefectMaker(no_defect=poscar)
+    DM.get_magnetic_config([magnetic_atom],magmon,magmon_identity,symprec)
 
 
 @cli.command('get_mole_point_defect',short_help="Get purity POSCAR of molecule")
@@ -335,7 +367,7 @@ def symmetry(poscar,attr,sympre):
         for key, val in atom_species.items():
             print(key,val)
     elif 'primi' in attr:
-        if c.is_primitive():
+        if c.is_primitive(sympre):
             click.echo('This poscar is a primitive cell, or you can decrease symprec to try to get a primitive cell')
             return
         pc = c.get_primitive_cell(sympre)
@@ -676,7 +708,8 @@ def test_encut(poscar,start,end,step,attribute,is_login_node):
 @click.option('--step','-t', default=300,type=int)
 @click.option('--attribute','-a', default='',type=str)
 @click.option('--is_login_node','-i',default=False,type=bool)
-def test_kpts(poscar,start,end,step,attribute,is_login_node):
+@click.option('--run','-r',default=True,type=bool)
+def test_kpts(poscar,start,end,step,attribute,is_login_node,run):
     '''
     Example:
 
@@ -689,7 +722,7 @@ def test_kpts(poscar,start,end,step,attribute,is_login_node):
     tp = test_para.TestParameter(poscar=poscar)
     kw = {'start':start,'end':end,'step':step,'is_login_node':is_login_node}
     kw.update(us.get_kw(attribute))
-    tp.test_kpts(kw=kw)
+    tp.test_kpts(kw=kw,run=run)
 
 
 @cli.command('diff_pos',short_help="judge two poscar are the same structures or not")
